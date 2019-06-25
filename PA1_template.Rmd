@@ -7,19 +7,76 @@ output:
 
 
 ## Loading and preprocessing the data
-
+```{r}
+library(dplyr)
+library(tidyr)
+library(plyr)
+library(ggplot2)
+```
+```{r}
+activity = read.csv(unz("activity.zip","activity.csv"), stringsAsFactors = FALSE)
+activity$date = as.Date(activity$date)
+activity = as_tibble(activity)
+head(activity)
+```
 
 
 ## What is mean total number of steps taken per day?
 
 
+```{r}
+library(dplyr)
+
+activity_per_day = activity %>% group_by(date) %>% summarise(steps = sum(steps,na.rm= TRUE))
+
+activity_per_day
+hist(activity_per_day$steps,breaks= 10, main = "Steps per day", xlab = "Steps", ylab = "Days")
+```
+```{r results='hide'}
+mean_steps = mean(activity_per_day$steps,na.rm = TRUE)
+median_steps = median(activity_per_day$steps, na.rm = TRUE)
+```
+The mean is `r mean_steps` and the median is `r median_steps`.
+
 
 ## What is the average daily activity pattern?
+```{r}
 
+activity
+activity_per_interval = activity %>% group_by(interval) %>% summarise(steps=mean(steps,na.rm=TRUE))
+activity_per_interval
+plot(activity_per_interval, type = "l", main  = "Daily Activity Pattern",ylab = "Average steps per interval")
+```
 
 
 ## Imputing missing values
 
+The NA values of the steps variable are replaced by the mean steps per interval.
+```{r}
 
+na_number = sum(is.na(activity$steps))
+f = function(x){
+    if (is.na(x$steps)){
+    x$steps = activity_per_interval$steps[activity_per_interval$interval == x$interval]
+    }
+}
+applied = ddply(activity,.(steps, interval, date),f)
+activity_filled = mutate(activity, steps = replace(activity$steps,which(is.na(activity$steps)),applied$V1))
+
+```
+
+
+```{r}
+
+activity_per_day2 = activity_filled %>% group_by(date) %>% summarise(steps = sum(steps))
+activity_per_day2
+hist(activity_per_day2$steps,breaks= 10,main = "Steps per day",xlab = "Steps", ylab = "Days")
+new_mean_steps = mean(activity_per_day2$steps)
+new_median_steps = median(activity_per_day2$steps)
+```
+
+The total number of NA in the data is `r na_number`.
+The mean steps per day calculated with the NA filled is `r new_mean_steps` and the median is `r new_median_steps`.
+The mean remains the same as before filling the NAs, unlike the median, which becomes smaller due to the higher count of low activity days.
 
 ## Are there differences in activity patterns between weekdays and weekends?
